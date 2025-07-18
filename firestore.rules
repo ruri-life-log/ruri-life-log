@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 瑠璃の人生ログデータのセキュリティルール
+    match /journal/{document} {
+      allow read, write: if true; // 開発中は全許可、後で認証追加
+    }
+    
+    match /dreams/{document} {
+      allow read, write: if true;
+    }
+    
+    match /roadmap/{document} {
+      allow read, write: if true;
+    }
+    
+    match /emotions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /travels/{document} {
+      allow read, write: if true;
+    }
+    
+    match /monthly_themes/{document} {
+      allow read, write: if true;
+    }
+  }
+}
