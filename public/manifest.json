@@ -1,49 +1,159 @@
 {
   "name": "瑠璃の人生ログ",
-  "short_name": "るりログ",
-  "description": "モバイルボヘミアン実現への38週間の旅路を記録するPWAアプリ",
+  "short_name": "瑠璃ライフログ",
+  "description": "モバイルボヘミアン実現への38週間の旅路を記録するライフログアプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#667eea",
-  "theme_color": "#764ba2",
-  "orientation": "portrait",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
   "scope": "/",
+  "lang": "ja",
+  "categories": ["lifestyle", "productivity", "travel"],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-dashboard.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "mobile",
+      "label": "ダッシュボード画面（モバイル）"
+    },
+    {
+      "src": "/screenshots/desktop-dashboard.png", 
+      "sizes": "1280x800",
+      "type": "image/png",
+      "platform": "desktop",
+      "label": "ダッシュボード画面（デスクトップ）"
+    }
+  ],
   "icons": [
     {
-      "src": "icons/icon-192x192.png",
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96x96.png", 
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128", 
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["lifestyle", "productivity", "health"],
-  "screenshots": [],
   "shortcuts": [
     {
-      "name": "今日のジャーナリング",
+      "name": "新しいジャーナル",
       "short_name": "ジャーナル",
-      "description": "今日の記録を追加",
-      "url": "/?action=journal",
-      "icons": [{
-        "src": "icons/journal-icon.png",
-        "sizes": "96x96"
-      }]
+      "description": "今日の記録を書く",
+      "url": "/?action=new-journal",
+      "icons": [
+        {
+          "src": "/icons/shortcut-journal.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "ドリームリスト",
-      "short_name": "夢リスト",
-      "description": "夢と目標を管理",
+      "short_name": "ドリーム",
+      "description": "夢リストを確認・追加",
       "url": "/?action=dreams",
-      "icons": [{
-        "src": "icons/dreams-icon.png",
-        "sizes": "96x96"
-      }]
+      "icons": [
+        {
+          "src": "/icons/shortcut-dreams.png", 
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "感情記録",
+      "short_name": "感情",
+      "description": "今の気持ちを記録",
+      "url": "/?action=new-emotion",
+      "icons": [
+        {
+          "src": "/icons/shortcut-emotion.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "ロードマップ",
+      "short_name": "進捗",
+      "description": "38週間の進捗確認",
+      "url": "/?action=roadmap",
+      "icons": [
+        {
+          "src": "/icons/shortcut-roadmap.png",
+          "sizes": "96x96"
+        }
+      ]
     }
-  ]
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+rurilife",
+      "url": "/?action=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "photos",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  }
 }
