@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瑠璃の人生ログ | モバイルボヘミアンへの道</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="モバイルボヘミアン実現への38週間の旅路を記録するPWAアプリ">
+    <meta name="theme-color" content="#764ba2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="るりログ">
+    
+    <!-- PWA Links -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 瑠璃の人生ログ</h1>
+            <p>モバイルボヘミアンへの道 | 38週間の旅路</p>
+            <div class="last-updated" id="lastUpdated">
+                <span>最終更新: ロード中...</span>
+            </div>
+        </div>
+        
+        <div class="dashboard" id="dashboard">
+            <!-- 38週間ロードマップ -->
+            <div class="card">
+                <h3>🗺️ モバイルボヘミアン実現ロードマップ</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="roadmapProgress" style="width: 15%"></div>
+                </div>
+                <p id="roadmapStatus">進捗: 6/38週間完了</p>
+                
+                <div class="roadmap-weeks" id="roadmapWeeks">
+                    <div class="roadmap-week">
+                        <div class="week-number week-current">6</div>
+                        <div>
+                            <strong>現在</strong><br>
+                            副業に向けて「るりの発信コンセプト」整理
+                        </div>
+                    </div>
+                    
+                    <div class="roadmap-week">
+                        <div class="week-number">7</div>
+                        <div>
+                            <strong>次週</strong><br>
+                            note記事：「自由な働き方のためにしてること」
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="roadmap">週次振り返りを追加</button>
+            </div>
+            
+            <!-- ドリームリスト進捗 -->
+            <div class="card">
+                <h3>✨ ドリームリスト進捗</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalDreams">127</div>
+                        <div class="stat-label">総夢の数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="completedDreams">23</div>
+                        <div class="stat-label">達成済み</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="dreamPercentage">18%</div>
+                        <div class="stat-label">達成率</div>
+                    </div>
+                </div>
+                
+                <div class="dreams-list" id="dreamsList">
+                    <div class="dream-item completed">
+                        <span>🌸</span>
+                        <span>知床旅行で温泉とジャーナリング</span>
+                    </div>
+                    
+                    <div class="dream-item">
+                        <span>🌍</span>
+                        <span>ワーホリ準備を計画的に進める</span>
+                    </div>
+                    
+                    <div class="dream-item">
+                        <span>🏠</span>
+                        <span>窓から緑が見える場所で生活</span>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="dream">新しい夢を追加</button>
+            </div>
+            
+            <!-- 今日のジャーナリング -->
+            <div class="card">
+                <h3>📝 今日のジャーナリング</h3>
+                
+                <div class="journal-entries" id="journalEntries">
+                    <div class="journal-entry">
+                        <div class="journal-date">2025年7月18日</div>
+                        <p>今日はClaudeと人生ログサイトの設計をした。技術的な部分も楽しくて、モバイルボヘミアンへの道が具体的に見えてきた✨ デジタルデトックスしながらも、テクノロジーを味方につける感覚が掴めそう。</p>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="journal">今日の記録を追加</button>
+            </div>
+            
+            <!-- 感情トラッキング -->
+            <div class="card">
+                <h3>💖 今週の幸福度</h3>
+                <div class="emotion-tracker">
+                    <div class="emotion-score" id="emotionScore">8.2</div>
+                    <p>過去7日間の平均</p>
+                    
+                    <div class="emotion-history" id="emotionHistory">
+                        <div class="emotion-day">
+                            <span>月</span><span>7.8</span>
+                        </div>
+                        <div class="emotion-day">
+                            <span>火</span><span>8.5</span>
+                        </div>
+                        <div class="emotion-day">
+                            <span>水</span><span>8.0</span>
+                        </div>
+                        <div class="emotion-day">
+                            <span>木</span><span>8.7</span>
+                        </div>
+                        <div class="emotion-day">
+                            <span>金</span><span>9.1</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="emotion">今日の気分を記録</button>
+            </div>
+            
+            <!-- 月次テーマ（TO BEリスト） -->
+            <div class="card">
+                <h3>🌙 今月のTO BEリスト</h3>
+                <h4 class="monthly-theme">7月のテーマ：「発信と整え」</h4>
+                
+                <div class="monthly-goals" id="monthlyGoals">
+                    <div class="dream-item completed">
+                        <span>📱</span>
+                        <span>GitHub MCP連携完了</span>
+                    </div>
+                    
+                    <div class="dream-item">
+                        <span>✍️</span>
+                        <span>週2回のThreads投稿習慣</span>
+                    </div>
+                    
+                    <div class="dream-item">
+                        <span>🧘‍♀️</span>
+                        <span>毎日ジャーナリング継続</span>
+                    </div>
+                    
+                    <div class="dream-item">
+                        <span>🌱</span>
+                        <span>パーソナルタイムを増やす</span>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="monthly">今月の目標を追加</button>
+            </div>
+            
+            <!-- 旅ログ -->
+            <div class="card">
+                <h3>🗾 旅ログ</h3>
+                
+                <div class="travel-entries" id="travelEntries">
+                    <div class="journal-entry">
+                        <div class="journal-date">📍 知床, 北海道</div>
+                        <p>温泉に浸かりながら夕日を見て、心が本当に整った。自然の中でのジャーナリングは格別。これがモバイルボヘミアンの理想の1日かも。</p>
+                    </div>
+                </div>
+                
+                <div class="stats travel-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="visitedPlaces">12</div>
+                        <div class="stat-label">訪問地</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="travelDays">47</div>
+                        <div class="stat-label">総移動日数</div>
+                    </div>
+                </div>
+                
+                <button class="add-btn" data-action="travel">新しい旅を記録</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading indicator -->
+    <div class="loading" id="loading" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Firebaseと接続中...</p>
+    </div>
+    
+    <!-- Scripts -->
+    <script type="module" src="/js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('🚀 Service Worker 登録成功:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Service Worker 登録失敗:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
