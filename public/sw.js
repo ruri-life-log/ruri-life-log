@@ -1,200 +1,366 @@
-// Service Worker for PWA
-// 瑠璃の人生ログアプリのオフライン対応
+// 🔄 Service Worker - 瑠璃の人生ログサイト
+// オフライン対応・キャッシュ管理・PWA機能
 
 const CACHE_NAME = 'ruri-life-log-v1.0.0';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles/main.css',
-  '/js/app.js',
-  '/js/firebase-config.js',
-  '/manifest.json',
-  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
-  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js',
-  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+const DATA_CACHE_NAME = 'ruri-life-log-data-v1.0.0';
+
+// キャッシュするリソース
+const FILES_TO_CACHE = [
+    '/',
+    '/index.html',
+    '/styles/main.css',
+    '/js/app.js',
+    '/js/firebase-config.js',
+    '/manifest.json',
+    // Firebase SDK
+    'https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js',
+    // フォント（オプション）
+    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
+    // アイコン（実際のアイコンファイルが作成されたら追加）
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png'
 ];
 
+// Firebase関連のURL（データキャッシュ用）
+const DATA_URLS = [
+    'https://firestore.googleapis.com',
+    'https://ruri-life-log-default-rtdb.firebaseio.com'
+];
+
+// ==========================================================
 // Service Worker インストール
+// ==========================================================
+
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker インストール中...');
-  
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('📦 キャッシュオープン完了');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => {
-        console.log('✅ 必要ファイルのキャッシュ完了');
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('❌ キャッシュエラー:', error);
-      })
-  );
-});
-
-// Service Worker アクティベート
-self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker アクティベート');
-  
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ 古いキャッシュを削除:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('✅ Service Worker アクティベート完了');
-      return self.clients.claim();
-    })
-  );
-});
-
-// ネットワークリクエスト処理
-self.addEventListener('fetch', (event) => {
-  // Firebase API関連のリクエストはキャッシュしない
-  if (event.request.url.includes('firebaseio.com') || 
-      event.request.url.includes('googleapis.com') ||
-      event.request.url.includes('identitytoolkit.googleapis.com')) {
-    return;
-  }
-  
-  // POSTリクエストはキャッシュしない
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // キャッシュにあれば返す
-        if (response) {
-          console.log('📦 キャッシュから取得:', event.request.url);
-          return response;
-        }
-        
-        // なければネットワークから取得
-        return fetch(event.request)
-          .then((response) => {
-            // レスポンスが有効でない場合はそのまま返す
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // レスポンスをクローンしてキャッシュに保存
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
-          })
-          .catch((error) => {
-            console.log('❌ ネットワークエラー:', error);
-            
-            // ネットワークエラーの場合、オフライン用の簡易ページを表示
-            if (event.request.destination === 'document') {
-              return caches.match('/index.html');
-            }
-            
-            // その他のリソースはエラーを返す
-            throw error;
-          });
-      })
-  );
-});
-
-// バックグラウンド同期（将来の機能拡張用）
-self.addEventListener('sync', (event) => {
-  console.log('🔄 バックグラウンド同期イベント:', event.tag);
-  
-  if (event.tag === 'background-sync') {
-    console.log('🔄 バックグラウンド同期実行');
-    // オフライン時に保存されたデータをFirestoreに同期する処理
-    // 将来の機能拡張で実装予定
-  }
-});
-
-// プッシュ通知（将来の機能拡張用）
-self.addEventListener('push', (event) => {
-  console.log('🔔 プッシュ通知受信:', event);
-  
-  let notificationData = {
-    title: '瑠璃の人生ログ',
-    body: '今日の記録をつける時間ですね！',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
-    vibrate: [200, 100, 200],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 'journal-reminder'
-    },
-    actions: [
-      {
-        action: 'open',
-        title: 'アプリを開く',
-        icon: '/icons/icon-192x192.png'
-      },
-      {
-        action: 'close',
-        title: '後で',
-        icon: '/icons/icon-192x192.png'
-      }
-    ]
-  };
-  
-  // プッシュデータがある場合はそれを使用
-  if (event.data) {
-    try {
-      const pushData = event.data.json();
-      notificationData = { ...notificationData, ...pushData };
-    } catch (error) {
-      console.error('❌ プッシュデータパースエラー:', error);
-    }
-  }
-  
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, notificationData)
-  );
-});
-
-// プッシュ通知クリックイベント
-self.addEventListener('notificationclick', (event) => {
-  console.log('🔔 プッシュ通知クリック:', event.action);
-  
-  event.notification.close();
-  
-  if (event.action === 'open' || !event.action) {
-    // アプリを開く
+    console.log('🔧 Service Worker: Installing...');
+    
     event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then((clients) => {
-          // 既に開いているタブがある場合はそれをアクティブに
-          for (let client of clients) {
-            if (client.url === self.location.origin && 'focus' in client) {
-              return client.focus();
-            }
-          }
-          
-          // なければ新しいタブで開く
-          if (clients.openWindow) {
-            return clients.openWindow('/');
-          }
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log('📦 Service Worker: Pre-caching app shell');
+            return cache.addAll(FILES_TO_CACHE);
         })
     );
-  }
-  // 'close'アクションの場合は何もしない
+    
+    // 新しいService Workerを即座にアクティブ化
+    self.skipWaiting();
 });
 
-// エラーハンドラー
+// ==========================================================
+// Service Worker アクティベーション
+// ==========================================================
+
+self.addEventListener('activate', (event) => {
+    console.log('✅ Service Worker: Activating...');
+    
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    // 古いキャッシュを削除
+                    if (cacheName !== CACHE_NAME && cacheName !== DATA_CACHE_NAME) {
+                        console.log('🗑️ Service Worker: Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    
+    // 全てのクライアントでService Workerを即座に制御開始
+    self.clients.claim();
+});
+
+// ==========================================================
+// ネットワークリクエスト処理
+// ==========================================================
+
+self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
+    
+    // Firebase APIリクエストの処理
+    if (isFirebaseRequest(url)) {
+        event.respondWith(handleFirebaseRequest(request));
+        return;
+    }
+    
+    // 通常のリソースリクエストの処理
+    event.respondWith(handleResourceRequest(request));
+});
+
+// Firebase関連リクエストかどうかを判定
+function isFirebaseRequest(url) {
+    return DATA_URLS.some(dataUrl => url.href.includes(dataUrl)) ||
+           url.href.includes('googleapis.com') ||
+           url.href.includes('firebaseio.com');
+}
+
+// Firebase APIリクエストの処理（Network First戦略）
+async function handleFirebaseRequest(request) {
+    try {
+        // ネットワークを最初に試行
+        const networkResponse = await fetch(request);
+        
+        // 成功した場合、レスポンスをキャッシュ
+        if (networkResponse.status === 200) {
+            const cache = await caches.open(DATA_CACHE_NAME);
+            cache.put(request.url, networkResponse.clone());
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        // ネットワークエラーの場合、キャッシュから取得
+        console.log('📡 Service Worker: Network request failed, trying cache...', request.url);
+        
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // オフライン用のエラーレスポンス
+        return new Response(
+            JSON.stringify({
+                error: 'offline',
+                message: 'オフラインモードです。データの同期は接続復旧後に行われます。'
+            }),
+            {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+    }
+}
+
+// 通常のリソースリクエストの処理（Cache First戦略）
+async function handleResourceRequest(request) {
+    // GETリクエストのみキャッシュ処理
+    if (request.method !== 'GET') {
+        return fetch(request);
+    }
+    
+    try {
+        // キャッシュを最初に確認
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // キャッシュにない場合、ネットワークから取得
+        const networkResponse = await fetch(request);
+        
+        // 成功した場合、キャッシュに保存
+        if (networkResponse.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        console.log('❌ Service Worker: Failed to fetch resource:', request.url);
+        
+        // オフライン用のフォールバック
+        if (request.url.includes('.html') || request.headers.get('accept').includes('text/html')) {
+            return caches.match('/index.html');
+        }
+        
+        return new Response('オフラインです', {
+            status: 503,
+            statusText: 'Service Unavailable'
+        });
+    }
+}
+
+// ==========================================================
+// バックグラウンド同期（将来実装）
+// ==========================================================
+
+self.addEventListener('sync', (event) => {
+    console.log('🔄 Service Worker: Background sync triggered');
+    
+    if (event.tag === 'journal-sync') {
+        event.waitUntil(syncJournalData());
+    } else if (event.tag === 'dreams-sync') {
+        event.waitUntil(syncDreamsData());
+    } else if (event.tag === 'emotions-sync') {
+        event.waitUntil(syncEmotionsData());
+    }
+});
+
+// ジャーナルデータの同期
+async function syncJournalData() {
+    try {
+        console.log('📝 Service Worker: Syncing journal data...');
+        
+        // IndexedDBからペンディング中のデータを取得
+        const pendingEntries = await getPendingJournalEntries();
+        
+        // Firebase Firestoreに送信
+        for (const entry of pendingEntries) {
+            await submitJournalEntry(entry);
+        }
+        
+        console.log('✅ Service Worker: Journal sync completed');
+    } catch (error) {
+        console.error('❌ Service Worker: Journal sync failed:', error);
+        throw error; // 再試行のため
+    }
+}
+
+// ドリームデータの同期
+async function syncDreamsData() {
+    try {
+        console.log('✨ Service Worker: Syncing dreams data...');
+        // 実装詳細は省略（同様のパターン）
+    } catch (error) {
+        console.error('❌ Service Worker: Dreams sync failed:', error);
+        throw error;
+    }
+}
+
+// 感情データの同期
+async function syncEmotionsData() {
+    try {
+        console.log('💖 Service Worker: Syncing emotions data...');
+        // 実装詳細は省略（同様のパターン）
+    } catch (error) {
+        console.error('❌ Service Worker: Emotions sync failed:', error);
+        throw error;
+    }
+}
+
+// ==========================================================
+// プッシュ通知（将来実装）
+// ==========================================================
+
+self.addEventListener('push', (event) => {
+    console.log('🔔 Service Worker: Push notification received');
+    
+    if (!event.data) {
+        return;
+    }
+    
+    const data = event.data.json();
+    const options = {
+        body: data.body || '新しい通知があります',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/badge-72x72.png',
+        vibrate: [200, 100, 200],
+        data: data.data || {},
+        actions: [
+            {
+                action: 'open',
+                title: '開く'
+            },
+            {
+                action: 'dismiss',
+                title: '閉じる'
+            }
+        ],
+        requireInteraction: true,
+        tag: data.tag || 'default'
+    };
+    
+    event.waitUntil(
+        self.registration.showNotification(data.title || '瑠璃の人生ログ', options)
+    );
+});
+
+// 通知クリック処理
+self.addEventListener('notificationclick', (event) => {
+    console.log('🔔 Service Worker: Notification clicked');
+    
+    event.notification.close();
+    
+    if (event.action === 'dismiss') {
+        return;
+    }
+    
+    // アプリを開く
+    event.waitUntil(
+        clients.matchAll().then((clientList) => {
+            // 既に開いているタブがあるかチェック
+            for (const client of clientList) {
+                if (client.url === '/' && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            
+            // 新しいタブを開く
+            if (clients.openWindow) {
+                return clients.openWindow('/');
+            }
+        })
+    );
+});
+
+// ==========================================================
+// ヘルパー関数（将来実装のスケルトン）
+// ==========================================================
+
+// IndexedDBからペンディング中のジャーナルエントリを取得
+async function getPendingJournalEntries() {
+    // IndexedDB実装は将来追加
+    return [];
+}
+
+// Firebase Firestoreにジャーナルエントリを送信
+async function submitJournalEntry(entry) {
+    // Firebase送信実装は将来追加
+    console.log('Submitting journal entry:', entry);
+}
+
+// ==========================================================
+// メッセージ処理（メインスレッドとの通信）
+// ==========================================================
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+    
+    if (event.data && event.data.type === 'CACHE_STATS') {
+        getCacheStats().then(stats => {
+            event.ports[0].postMessage(stats);
+        });
+    }
+});
+
+// キャッシュ統計情報を取得
+async function getCacheStats() {
+    const cacheNames = await caches.keys();
+    const stats = {};
+    
+    for (const cacheName of cacheNames) {
+        const cache = await caches.open(cacheName);
+        const keys = await cache.keys();
+        stats[cacheName] = keys.length;
+    }
+    
+    return stats;
+}
+
+// ==========================================================
+// デバッグ用ログ
+// ==========================================================
+
+console.log('🌸 Service Worker: Ruri Life Log SW loaded successfully!');
+
+// Service Worker更新チェック
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'CHECK_UPDATE') {
+        self.registration.update();
+    }
+});
+
+// エラーハンドリング
 self.addEventListener('error', (event) => {
-  console.error('❌ Service Worker エラー:', event.error);
+    console.error('❌ Service Worker: Error occurred:', event.error);
 });
 
-console.log('🌸 瑠璃の人生ログ Service Worker 準備完了！');
+self.addEventListener('unhandledrejection', (event) => {
+    console.error('❌ Service Worker: Unhandled promise rejection:', event.reason);
+});
+
+console.log('✨ Service Worker: All event listeners registered. Ready for PWA magic!');
