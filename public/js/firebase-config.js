@@ -15,26 +15,41 @@ const firebaseConfig = {
 // Firebase初期化
 let app, db;
 
+console.log('🔥 Firebase初期化開始...');
+
 try {
+    // Firebase がロードされているかチェック
+    if (typeof firebase === 'undefined') {
+        throw new Error('Firebase SDK が読み込まれていません');
+    }
+    
+    console.log('📦 Firebase SDK 確認済み');
+    
     // Firebase App初期化
     app = firebase.initializeApp(firebaseConfig);
+    console.log('🔥 Firebase App 初期化成功');
     
     // Firestore初期化
     db = firebase.firestore();
+    console.log('💾 Firestore 初期化成功');
     
     // Firestore設定
     db.settings({
         cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
     });
     
-    // オフライン永続化を有効にする
+    // オフライン永続化を有効にする（エラーハンドリング付き）
     db.enablePersistence({
         synchronizeTabs: true
+    }).then(() => {
+        console.log('📱 オフライン永続化有効');
     }).catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-        } else if (err.code == 'unimplemented') {
-            console.log('The current browser does not support offline persistence');
+        if (err.code === 'failed-precondition') {
+            console.warn('⚠️ 複数のタブが開いています - 1つのタブでのみ永続化が可能');
+        } else if (err.code === 'unimplemented') {
+            console.warn('⚠️ このブラウザはオフライン永続化をサポートしていません');
+        } else {
+            console.error('❌ 永続化エラー:', err);
         }
     });
     
@@ -42,27 +57,57 @@ try {
     
 } catch (error) {
     console.error('❌ Firebase初期化エラー:', error);
+    console.log('💡 Firestoreが有効化されていない可能性があります');
+    
+    // フォールバック: モックオブジェクトを作成
+    db = null;
 }
 
-// Firestoreコレクション参照
+// Firestoreコレクション参照（エラーハンドリング付き）
 const collections = {
-    journal: () => db.collection('journal'),
-    dreams: () => db.collection('dreams'),
-    emotions: () => db.collection('emotions'),
-    roadmap: () => db.collection('roadmap'),
-    monthlyThemes: () => db.collection('monthly_themes'),
-    travels: () => db.collection('travels')
+    journal: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('journal');
+    },
+    dreams: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('dreams');
+    },
+    emotions: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('emotions');
+    },
+    roadmap: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('roadmap');
+    },
+    monthlyThemes: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('monthly_themes');
+    },
+    travels: () => {
+        if (!db) throw new Error('Firestore が初期化されていません');
+        return db.collection('travels');
+    }
 };
 
-// Firebase接続状態監視
-db.enableNetwork().then(() => {
-    console.log('🌐 Firebase オンライン接続');
-}).catch((error) => {
-    console.log('📱 Firebase オフラインモード');
-});
+// Firebase接続状態監視（初期化成功時のみ）
+if (db) {
+    db.enableNetwork().then(() => {
+        console.log('🌐 Firebase オンライン接続');
+    }).catch((error) => {
+        console.log('📱 Firebase オフラインモード:', error.message);
+    });
+}
 
 // タイムスタンプヘルパー
-const timestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+const timestamp = () => {
+    if (!firebase || !firebase.firestore) {
+        return new Date().toISOString();
+    }
+    return firebase.firestore.FieldValue.serverTimestamp();
+};
+
 const now = () => new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
 // エクスポート（グローバルスコープで利用可能に）
@@ -71,6 +116,23 @@ window.db = db;
 window.collections = collections;
 window.timestamp = timestamp;
 window.now = now;
+
+// Firestore接続確認のデバッグ関数
+window.checkFirebaseStatus = () => {
+    console.log('🔍 Firebase状態確認:');
+    console.log('- Firebase SDK:', typeof firebase);
+    console.log('- Firebase Apps:', firebase && firebase.apps ? firebase.apps.length : 0);
+    console.log('- Firestore DB:', !!db);
+    console.log('- Collections:', typeof collections);
+    
+    if (db) {
+        console.log('✅ Firebase 正常');
+        return true;
+    } else {
+        console.log('❌ Firestore が利用できません');
+        return false;
+    }
+};
 
 // 瑠璃のドリームリスト初期データ（初回起動時に自動追加）
 const initialDreams = [
@@ -113,14 +175,14 @@ const roadmapWeeks = [
     // Phase 1: 整え・発信スタート（2025年7月〜9月）
     { week: 1, period: "2025/07/07〜07/13", content: "業務内容の棚卸し（好き/嫌い/疲れる/任せたい） / 現実と理想のギャップジャーナリング", phase: 1 },
     { week: 2, period: "2025/07/14〜07/20", content: "「理想の1日」ビジュアル化＆感覚を再確認 / note/Threadsで発信テーマを決定", phase: 1 },
-    { week: 3, period: "2025/07/21〜07/27", content: "初投稿：「会社辞めたいと思った理由」 / noteで"今の働き方への違和感"記事", phase: 1 },
+    { week: 3, period: "2025/07/21〜07/27", content: "初投稿：「会社辞めたいと思った理由」 / noteで\"今の働き方への違和感\"記事", phase: 1 },
     { week: 4, period: "2025/07/28〜08/03", content: "週2回のThreads投稿スタート / 「モバイルボヘミアンになりたい理由」記事作成", phase: 1 },
     { week: 5, period: "2025/08/04〜08/10", content: "暮らしの発信素材ストック集め（写真・日常） / 自分の「整う習慣」も発信ネタに追加", phase: 1 },
     { week: 6, period: "2025/08/11〜08/17", content: "副業に向けて「るりの発信コンセプト」整理 / 引き継げそうな業務を社内でメモしはじめる", phase: 1 },
     { week: 7, period: "2025/08/18〜08/24", content: "note記事：「自由な働き方のためにしてること」 / 小さなデジタル商品案を考える", phase: 1 },
     { week: 8, period: "2025/08/25〜08/31", content: "「週3で暮らす理想の暮らし」文章化＆発信 / 副業プランをノートに3つ書いてみる", phase: 1 },
     { week: 9, period: "2025/09/01〜09/07", content: "Threads：「旅をしながら働く人生を選びたい理由」 / 自分の過去と今を照らす記事を書く", phase: 1 },
-    { week: 10, period: "2025/09/08〜09/14", content: "引き継ぎリストの"私が担当しているタスク全体像"をまとめる（準備だけ） / 「自分の理想と向き合う週」として心身ケア重視", phase: 1 },
+    { week: 10, period: "2025/09/08〜09/14", content: "引き継ぎリストの\"私が担当しているタスク全体像\"をまとめる（準備だけ） / 「自分の理想と向き合う週」として心身ケア重視", phase: 1 },
     
     // Phase 2: 副業土台づくり（2025年10月〜12月）
     { week: 20, period: "2025/11/18〜11/24", content: "暮らしと働き方をテーマにミニ講座企画（アイデア段階OK） / noteマガジン or メルマガ準備", phase: 2 },
@@ -128,12 +190,17 @@ const roadmapWeeks = [
     
     // Phase 3: 独立・実験・旅立ち（2026年1月〜3月）
     { week: 30, period: "2026/01/26〜02/01", content: "⭐️**正式に退職の意思を上司に伝える（退職日：3月末予定）** / 引き継ぎ内容の整理スタート", phase: 3 },
-    { week: 35, period: "2026/03/02〜03/08", content: "\"るりの旅暮らし\"開始宣言＆発信スタート / 旅先からライブ感のある発信（写真/動画）", phase: 3 },
+    { week: 35, period: "2026/03/02〜03/08", content: "\\\"るりの旅暮らし\\\"開始宣言＆発信スタート / 旅先からライブ感のある発信（写真/動画）", phase: 3 },
     { week: 38, period: "2026/03/23〜03/29", content: "今後の収入源と暮らし方の方向性を調整 / 第一段階の「理想の人生」完了🌱次のテーマを描く", phase: 3 }
 ];
 
 // 初期データセットアップ関数
 async function setupInitialData() {
+    if (!db) {
+        console.log('⚠️ Firestore が利用できないため、初期データセットアップをスキップ');
+        return;
+    }
+    
     try {
         // ドリームリストの初期データをチェック
         const dreamsSnapshot = await collections.dreams().limit(1).get();
@@ -180,26 +247,41 @@ async function setupInitialData() {
         
     } catch (error) {
         console.error('❌ 初期データセットアップエラー:', error);
+        if (error.message.includes('permission-denied')) {
+            console.log('💡 Firestoreのセキュリティルールを確認してください');
+        }
     }
 }
 
 // DOMコンテンツ読み込み完了後に初期データセットアップを実行
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📋 DOM読み込み完了 - Firebase状態確認中...');
+    
     // Firebase初期化完了を待つ
     if (db) {
+        console.log('✅ Firebase準備完了 - 初期データセットアップ開始');
         setupInitialData();
     } else {
+        console.log('⏳ Firebase初期化待機中...');
         // Firebase初期化を待ってから実行
         setTimeout(() => {
             if (db) {
+                console.log('✅ Firebase準備完了（遅延） - 初期データセットアップ開始');
                 setupInitialData();
+            } else {
+                console.log('❌ Firebase初期化に失敗しました');
             }
-        }, 1000);
+        }, 2000);
     }
 });
 
 // デバッグ用：Firebase接続テスト
 window.testFirebaseConnection = async () => {
+    if (!db) {
+        console.error('❌ Firestore が初期化されていません');
+        return false;
+    }
+    
     try {
         await collections.journal().add({
             content: "Firebase接続テスト",
