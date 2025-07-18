@@ -9,6 +9,20 @@ let currentTab = 'dashboard';
 let currentDreamCategory = 'all';
 let selectedMood = null;
 
+// Firebase初期化確認
+function isFirebaseReady() {
+    return window.db && typeof window.collections === 'object';
+}
+
+// 安全なFirestore操作のラッパー
+function safeFirestoreOperation(operation, fallback = null) {
+    if (!isFirebaseReady()) {
+        console.warn('⚠️ Firestore が利用できません - ローカル表示にフォールバック');
+        return fallback;
+    }
+    return operation();
+}
+
 // 日付フォーマット関数
 function formatDate(date) {
     if (!date) return '';
@@ -39,7 +53,11 @@ function formatRelativeDate(date) {
 // エラーハンドリング
 function handleError(error, context = '') {
     console.error(`❌ エラー ${context}:`, error);
-    showNotification(`エラーが発生しました: ${error.message}`, 'error');
+    if (error.message && error.message.includes('Firestore が初期化されていません')) {
+        showNotification('データベースに接続できません。ページを再読み込みしてください。', 'error');
+    } else {
+        showNotification(`エラーが発生しました: ${error.message}`, 'error');
+    }
 }
 
 // 通知表示
@@ -169,6 +187,11 @@ async function updateDashboard() {
 
 async function updateOverallProgress() {
     try {
+        if (!isFirebaseReady()) {
+            document.getElementById('overall-progress').textContent = '0%';
+            return;
+        }
+        
         const completedWeeks = await collections.roadmap()
             .where('completed', '==', true)
             .get();
@@ -177,11 +200,18 @@ async function updateOverallProgress() {
         document.getElementById('overall-progress').textContent = `${progress}%`;
     } catch (error) {
         console.error('進捗更新エラー:', error);
+        document.getElementById('overall-progress').textContent = '0%';
     }
 }
 
 async function updateCurrentWeek() {
     try {
+        if (!isFirebaseReady()) {
+            document.querySelector('.week-number').textContent = 'Week 1';
+            document.querySelector('.week-content').textContent = '業務内容の棚卸し';
+            return;
+        }
+        
         const currentWeekSnapshot = await collections.roadmap()
             .where('week', '<=', getCurrentWeekNumber())
             .orderBy('week', 'desc')
@@ -200,6 +230,11 @@ async function updateCurrentWeek() {
 
 async function updateDreamsCount() {
     try {
+        if (!isFirebaseReady()) {
+            document.getElementById('dreams-completed').textContent = '0';
+            return;
+        }
+        
         const completedDreams = await collections.dreams()
             .where('completed', '==', true)
             .get();
@@ -207,17 +242,23 @@ async function updateDreamsCount() {
         document.getElementById('dreams-completed').textContent = completedDreams.size;
     } catch (error) {
         console.error('ドリーム数更新エラー:', error);
+        document.getElementById('dreams-completed').textContent = '0';
     }
 }
 
 async function updateLatestJournal() {
     try {
+        const container = document.getElementById('latest-journal');
+        
+        if (!isFirebaseReady()) {
+            container.innerHTML = '<p class="no-data">まだジャーナルがありません</p>';
+            return;
+        }
+        
         const latestJournal = await collections.journal()
             .orderBy('createdAt', 'desc')
             .limit(1)
             .get();
-        
-        const container = document.getElementById('latest-journal');
         
         if (!latestJournal.empty) {
             const journal = latestJournal.docs[0].data();
@@ -234,19 +275,25 @@ async function updateLatestJournal() {
         }
     } catch (error) {
         console.error('最新ジャーナル更新エラー:', error);
+        document.getElementById('latest-journal').innerHTML = '<p class="no-data">まだジャーナルがありません</p>';
     }
 }
 
 async function updateEmotionChart() {
     try {
+        const container = document.getElementById('emotion-chart');
+        
+        if (!isFirebaseReady()) {
+            container.innerHTML = '<p class="no-data">今月の記録がありません</p>';
+            return;
+        }
+        
         const thisMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
         const emotions = await collections.emotions()
             .where('date', '>=', thisMonth + '-01')
             .where('date', '<=', thisMonth + '-31')
             .orderBy('date')
             .get();
-        
-        const container = document.getElementById('emotion-chart');
         
         if (!emotions.empty) {
             const chartData = emotions.docs.map(doc => {
@@ -263,6 +310,7 @@ async function updateEmotionChart() {
         }
     } catch (error) {
         console.error('感情チャート更新エラー:', error);
+        document.getElementById('emotion-chart').innerHTML = '<p class="no-data">今月の記録がありません</p>';
     }
 }
 
@@ -309,7 +357,10 @@ function updateMonthlyTheme() {
     };
     
     const themeText = themes[currentMonth] || '今月のテーマを設定しましょう';
-    document.querySelector('.theme-text').textContent = themeText;
+    const themeElement = document.querySelector('.theme-text');
+    if (themeElement) {
+        themeElement.textContent = themeText;
+    }
 }
 
 function getCurrentWeekNumber() {
@@ -331,10 +382,16 @@ function initJournalFeatures() {
     const cancelBtn = document.getElementById('cancel-journal');
     const moodButtons = document.querySelectorAll('.mood-btn');
     
+    if (!addBtn || !form || !formElement || !cancelBtn) {
+        console.warn('⚠️ ジャーナル要素が見つかりません');
+        return;
+    }
+    
     // フォーム表示
     addBtn.addEventListener('click', () => {
         form.classList.remove('hidden');
-        document.getElementById('journal-content').focus();
+        const contentInput = document.getElementById('journal-content');
+        if (contentInput) contentInput.focus();
     });
     
     // フォーム非表示
@@ -373,6 +430,11 @@ function updateMoodButtons() {
 async function handleJournalSubmit(e) {
     e.preventDefault();
     
+    if (!isFirebaseReady()) {
+        showNotification('データベースに接続できません', 'error');
+        return;
+    }
+    
     const content = document.getElementById('journal-content').value.trim();
     const tags = document.getElementById('journal-tags').value
         .split(',')
@@ -404,12 +466,17 @@ async function handleJournalSubmit(e) {
 
 async function loadJournalEntries() {
     try {
+        const container = document.getElementById('journal-list');
+        
+        if (!isFirebaseReady()) {
+            container.innerHTML = '<p class="no-data">データベースに接続できません。ページを再読み込みしてください。</p>';
+            return;
+        }
+        
         const snapshot = await collections.journal()
             .orderBy('createdAt', 'desc')
             .limit(20)
             .get();
-        
-        const container = document.getElementById('journal-list');
         
         if (snapshot.empty) {
             container.innerHTML = '<p class="no-data">まだジャーナルエントリーがありません。最初の記録を書いてみましょう！</p>';
@@ -448,10 +515,16 @@ function initDreamFeatures() {
     const cancelBtn = document.getElementById('cancel-dream');
     const categoryButtons = document.querySelectorAll('.category-btn');
     
+    if (!addBtn || !form || !formElement || !cancelBtn) {
+        console.warn('⚠️ ドリーム要素が見つかりません');
+        return;
+    }
+    
     // フォーム表示
     addBtn.addEventListener('click', () => {
         form.classList.remove('hidden');
-        document.getElementById('dream-title').focus();
+        const titleInput = document.getElementById('dream-title');
+        if (titleInput) titleInput.focus();
     });
     
     // フォーム非表示
@@ -489,6 +562,11 @@ function updateCategoryButtons() {
 async function handleDreamSubmit(e) {
     e.preventDefault();
     
+    if (!isFirebaseReady()) {
+        showNotification('データベースに接続できません', 'error');
+        return;
+    }
+    
     const title = document.getElementById('dream-title').value.trim();
     const category = document.getElementById('dream-category').value;
     const priority = parseInt(document.getElementById('dream-priority').value);
@@ -518,6 +596,13 @@ async function handleDreamSubmit(e) {
 
 async function loadDreams() {
     try {
+        const container = document.getElementById('dreams-list');
+        
+        if (!isFirebaseReady()) {
+            container.innerHTML = '<p class="no-data">データベースに接続できません。ページを再読み込みしてください。</p>';
+            return;
+        }
+        
         let query = collections.dreams().orderBy('priority').orderBy('createdAt', 'desc');
         
         if (currentDreamCategory !== 'all') {
@@ -525,8 +610,6 @@ async function loadDreams() {
         }
         
         const snapshot = await query.get();
-        
-        const container = document.getElementById('dreams-list');
         
         if (snapshot.empty) {
             container.innerHTML = '<p class="no-data">このカテゴリーにはまだ夢がありません。新しい夢を追加してみましょう！</p>';
@@ -567,6 +650,11 @@ async function toggleDreamCompletion(e) {
     const dreamId = e.target.getAttribute('data-id');
     const isCompleted = e.target.getAttribute('data-completed') === 'true';
     
+    if (!isFirebaseReady()) {
+        showNotification('データベースに接続できません', 'error');
+        return;
+    }
+    
     try {
         await collections.dreams().doc(dreamId).update({
             completed: !isCompleted
@@ -581,11 +669,41 @@ async function toggleDreamCompletion(e) {
 }
 
 // ==========================================================
+// プレースホルダー機能（未実装機能用）
+// ==========================================================
+
+function loadRoadmap() {
+    const container = document.getElementById('roadmap-timeline');
+    if (container) {
+        container.innerHTML = '<p class="no-data">ロードマップ機能は準備中です！</p>';
+    }
+}
+
+function loadEmotions() {
+    const container = document.getElementById('emotions-chart-container');
+    if (container) {
+        container.innerHTML = '<p class="no-data">感情トラッキング機能は準備中です！</p>';
+    }
+}
+
+function loadTravels() {
+    const container = document.getElementById('travels-list');
+    if (container) {
+        container.innerHTML = '<p class="no-data">旅ログ機能は準備中です！</p>';
+    }
+}
+
+// ==========================================================
 // DOMコンテンツ読み込み完了時の初期化
 // ==========================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🌸 瑠璃の人生ログサイト 起動中...');
+    
+    // Firebase状態確認
+    if (window.checkFirebaseStatus) {
+        window.checkFirebaseStatus();
+    }
     
     // 基本機能の初期化
     initTabNavigation();
@@ -609,15 +727,24 @@ document.addEventListener('DOMContentLoaded', () => {
             switch(action) {
                 case 'journal':
                     switchTab('journal');
-                    setTimeout(() => document.getElementById('add-journal-btn').click(), 100);
+                    setTimeout(() => {
+                        const addBtn = document.getElementById('add-journal-btn');
+                        if (addBtn) addBtn.click();
+                    }, 100);
                     break;
                 case 'emotion':
                     switchTab('emotions');
-                    setTimeout(() => document.getElementById('add-emotion-btn').click(), 100);
+                    setTimeout(() => {
+                        const addBtn = document.getElementById('add-emotion-btn');
+                        if (addBtn) addBtn.click();
+                    }, 100);
                     break;
                 case 'dream':
                     switchTab('dreams');
-                    setTimeout(() => document.getElementById('add-dream-btn').click(), 100);
+                    setTimeout(() => {
+                        const addBtn = document.getElementById('add-dream-btn');
+                        if (addBtn) addBtn.click();
+                    }, 100);
                     break;
             }
         });
@@ -630,17 +757,18 @@ document.addEventListener('keydown', (e) => {
         switch(e.key) {
             case 'j':
                 e.preventDefault();
-                document.getElementById('add-journal-btn').click();
+                const journalBtn = document.getElementById('add-journal-btn');
+                if (journalBtn) journalBtn.click();
                 break;
             case 'd':
                 e.preventDefault();
-                document.getElementById('add-dream-btn').click();
+                const dreamBtn = document.getElementById('add-dream-btn');
+                if (dreamBtn) dreamBtn.click();
                 break;
             case 'e':
                 e.preventDefault();
-                if (document.getElementById('add-emotion-btn')) {
-                    document.getElementById('add-emotion-btn').click();
-                }
+                const emotionBtn = document.getElementById('add-emotion-btn');
+                if (emotionBtn) emotionBtn.click();
                 break;
         }
     }
